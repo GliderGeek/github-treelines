@@ -1,0 +1,46 @@
+.treelines-delta {
+  display: inline-block;
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.treelines-delta--add {
+  color: var(--fgColor-success, var(--color-fg-success, #1a7f37));
+}
+
+.treelines-delta--del {
+  color: var(--fgColor-danger, var(--color-fg-danger, #cf222e));
+}
+
+.treelines-delta--zero {
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+}
+
+/* Make sure tree rows can host a right-aligned badge without breaking layout. */
+li:has(> .treelines-delta),
+[role="treeitem"]:has(> .treelines-delta) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treelines-banner {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 9999;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--bgColor-attention-muted, #fff8c5);
+  color: var(--fgColor-attention, #9a6700);
+  border: 1px solid var(--borderColor-attention-muted, #d4a72c);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}

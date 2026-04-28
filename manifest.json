@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub Treelines",
+  "version": "0.1.0",
+  "description": "Annotates the GitHub PR file tree with net line counts (+/-) per file and aggregated per folder.",
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/*/pull/*"],
+      "js": ["src/api.js", "src/annotate.js", "src/content.js"],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["https://api.github.com/*"],
+  "permissions": ["storage"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "treelines@local",
+      "strict_min_version": "115.0"
+    }
+  }
+}
