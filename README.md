@@ -4,6 +4,8 @@ A WebExtension that annotates GitHub's pull request file tree with the **net lin
 
 The Files changed page already shows `+/−` totals at the PR level and inside each file's diff header. This extension projects those numbers onto the tree on the left, where you'd naturally look for a structural overview.
 
+![Example tree with net delta badges](https://raw.githubusercontent.com/GliderGeek/github-treelines/main/screenshot.png)
+
 ## AI disclaimer
 
 This code has been written by ai agents and not reviewed. Usage on your own risk.
