@@ -12,16 +12,16 @@
   let treeObserver = null;
 
   function parsePrFromLocation() {
-    // Match /<owner>/<repo>/pull/<n>(/files...)?
+    // The redesigned Files changed page serves /changes, the classic /files.
     const m = location.pathname.match(
-      /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/files)?\/?$/,
+      /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/(?:files|changes))?\/?$/,
     );
     if (!m) return null;
     return { owner: m[1], repo: m[2], prNumber: m[3] };
   }
 
   function isFilesTab() {
-    return /\/pull\/\d+\/files\/?$/.test(location.pathname);
+    return /\/pull\/\d+\/(?:files|changes)\/?$/.test(location.pathname);
   }
 
   function scheduleAnnotate() {

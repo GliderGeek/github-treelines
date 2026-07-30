@@ -31,36 +31,33 @@ function extractFilePath(anchor, nets) {
     }
   }
 
-  // Reconstruct path by walking ancestor directory rows. Each directory row
-  // (role=treeitem with data-tree-entry-type=directory or class hasSubItem)
-  // contributes one path segment from its label.
-  const segments = [];
-  const leafName = anchor.textContent.trim();
-  if (leafName) segments.unshift(leafName);
+  // Rows nest as treeitem > group > treeitem, so the enclosing directory is
+  // never the immediate parent — collect labels from any depth.
+  const leafName = anchor.textContent.trim().split("\n")[0].trim();
+  if (!leafName) return null;
+  if (nets && nets.has(leafName)) return leafName;
+
+  let suffix = leafName;
   let cursor = row ? row.parentElement : anchor.parentElement;
   while (cursor && cursor.tagName !== "BODY") {
-    if (
-      cursor.matches &&
-      cursor.matches('[role="treeitem"]') &&
-      cursor.getAttribute("data-tree-entry-type") !== "root"
-    ) {
-      // Get the directory's own label — first text-bearing child of its content row.
-      const labelEl = cursor.querySelector(
-        ":scope > .ActionList-content, :scope > [class*='ActionList-content']",
-      );
-      const label = (labelEl ? labelEl.textContent : cursor.textContent)
+    if (cursor.matches && cursor.matches('li[role="treeitem"]')) {
+      const labelEl =
+        cursor.querySelector(
+          ":scope > .ActionList-content, :scope > [class*='ActionList-content']",
+        ) || cursor.firstElementChild;
+      const label = (labelEl ? labelEl.textContent : "")
         .trim()
         .split("\n")[0]
         .trim();
-      if (label) segments.unshift(label);
+      if (label) {
+        suffix = `${label}/${suffix}`;
+        if (nets && nets.has(suffix)) return suffix;
+      }
     }
     cursor = cursor.parentElement;
   }
-  const reconstructed = segments.join("/");
-  if (reconstructed && nets && nets.has(reconstructed)) return reconstructed;
 
-  // Last resort: return whatever we have so folder-prefix logic can use it.
-  return direct || reconstructed || leafName || null;
+  return null;
 }
 
 function findTreeContainer(root) {
@@ -74,26 +71,30 @@ function findTreeContainer(root) {
     root.querySelector('nav[aria-label*="file" i]');
   if (sidebar) return sidebar;
 
-  // Last-resort fallback: find common ancestor of all #diff- anchors, but
-  // only if there's no Layout-main ancestor (i.e. avoid the diff stream).
-  const anchors = root.querySelectorAll('a[href*="#diff-"]');
-  for (const anchor of anchors) {
-    if (!anchor.closest(".Layout-main")) {
-      let candidate = anchor.parentElement;
-      while (candidate && candidate !== document.body) {
-        if (
-          candidate.classList &&
-          (candidate.classList.contains("Layout-sidebar") ||
-            candidate.getAttribute("data-target") ===
-              "diff-layout.sidebarContainer")
-        ) {
-          return candidate;
-        }
-        candidate = candidate.parentElement;
-      }
+  // Fallback for layouts with none of those wrappers. Takes the outermost
+  // ancestor, not the first one holding several anchors — that would be the
+  // closest shared folder, leaving the rest of the tree unannotated.
+  const anchor = [...root.querySelectorAll('a[href*="#diff-"]')].find(
+    (a) => !a.closest(".Layout-main"),
+  );
+  if (!anchor) return null;
+
+  let best = null;
+  let bestCount = 1;
+  let candidate = anchor.parentElement;
+  while (candidate && candidate !== document.body) {
+    // The diff stream links to #diff- anchors too — don't span both panes.
+    if (candidate.querySelector(".Layout-main, [data-target*='diff-layout']")) {
+      break;
     }
+    const count = candidate.querySelectorAll('a[href*="#diff-"]').length;
+    if (count > bestCount) {
+      best = candidate;
+      bestCount = count;
+    }
+    candidate = candidate.parentElement;
   }
-  return null;
+  return best;
 }
 
 function formatNet(net) {
