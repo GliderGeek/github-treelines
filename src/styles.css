@@ -9,6 +9,7 @@
   border-radius: 3px;
   pointer-events: none;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .treelines-delta--add {
@@ -23,7 +24,44 @@
   color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
 }
 
-/* Make sure tree rows can host a right-aligned badge without breaking layout. */
+/* Folder totals are aggregates — the extra weight sets them apart from the
+   per-file numbers they sum up. Not a GitHub weight token: those stop at
+   semibold (600), which reads too close to the 500 of a file badge. */
+.treelines-delta--folder {
+  font-weight: 800;
+}
+
+/* The badge sits inside the row's content element (Primer's
+   TreeViewItemContent, or the legacy tree's ActionList-content), which lays its
+   children out in a row already — this only guarantees it, and lets the file
+   name shrink so the badge keeps its place at the right edge.
+   The class is doubled on purpose: Primer styles the same element with a
+   single class of its own, and content-script CSS loses that specificity tie. */
+.treelines-host.treelines-host {
+  display: flex;
+  align-items: center;
+}
+
+.treelines-host > *:not(.treelines-delta) {
+  min-width: 0;
+}
+
+/* Used only when we couldn't recognise the row's content element and the
+   element we fell back to is a CSS grid, which would drop the badge into an
+   implicit row below the name. Out of flow, pinned to the row's right edge. */
+.treelines-host--overlay.treelines-host--overlay {
+  position: relative;
+}
+
+.treelines-host--overlay > .treelines-delta {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  margin-left: 0;
+  transform: translateY(-50%);
+}
+
+/* Fallback for trees where the badge lands on the row element itself. */
 li:has(> .treelines-delta),
 [role="treeitem"]:has(> .treelines-delta) {
   display: flex;

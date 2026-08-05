@@ -7,6 +7,7 @@
   const { annotate } = window.__treelinesAnnotate;
 
   let currentNets = null;
+  let currentPaths = null;
   let currentPrKey = null;
   let scheduled = false;
   let treeObserver = null;
@@ -30,7 +31,7 @@
     requestAnimationFrame(() => {
       scheduled = false;
       if (!currentNets) return;
-      annotate(currentNets);
+      annotate(currentNets, currentPaths);
     });
   }
 
@@ -68,6 +69,7 @@
     if (prKey !== currentPrKey) {
       currentPrKey = prKey;
       currentNets = null;
+      currentPaths = null;
       clearBanner();
       const result = await fetchPrFiles(pr.owner, pr.repo, pr.prNumber);
       if (!result.ok) {
@@ -79,6 +81,7 @@
         return;
       }
       currentNets = result.nets;
+      currentPaths = result.paths;
       if (result.truncated) {
         showBanner("PR exceeds 3000 files; tree is partially annotated.");
       }
@@ -87,7 +90,7 @@
     // Wait for the tree to actually be in the DOM before annotating.
     let attempts = 0;
     const tryAnnotate = () => {
-      const { treeContainer } = annotate(currentNets);
+      const { treeContainer } = annotate(currentNets, currentPaths);
       if (treeContainer) {
         attachTreeObserver(treeContainer);
       } else if (attempts < 20) {

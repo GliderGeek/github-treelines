@@ -1,5 +1,10 @@
 // Fetches per-file additions/deletions from the GitHub REST API.
-// Returns { ok: true, nets: Map<path, net> } or { ok: false, reason }.
+// Returns { ok: true, nets: Map<path, net>, paths: string[] } or
+// { ok: false, reason }.
+//
+// `nets` is a lookup keyed by every path a tree row might show (including the
+// pre-rename path); `paths` lists each changed file exactly once and is what
+// folder totals are summed from, so a rename isn't counted twice.
 //
 // Pagination: GitHub returns up to 100 files per page; for very large PRs we
 // follow the Link: rel="next" header. Capped at 30 pages (3000 files) to bound
@@ -21,10 +26,11 @@ async function fetchPrFiles(owner, repo, prNumber) {
   const cacheKey = `${owner}/${repo}#${prNumber}`;
   const cached = memoryCache.get(cacheKey);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return { ok: true, nets: cached.nets };
+    return { ok: true, nets: cached.nets, paths: cached.paths };
   }
 
   const nets = new Map();
+  const paths = [];
   let url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=${PR_FILES_PAGE_SIZE}`;
   let pages = 0;
 
@@ -56,6 +62,7 @@ async function fetchPrFiles(owner, repo, prNumber) {
     for (const file of page) {
       const net = (file.additions || 0) - (file.deletions || 0);
       nets.set(file.filename, net);
+      paths.push(file.filename);
       if (file.previous_filename) {
         nets.set(file.previous_filename, net);
       }
@@ -65,8 +72,13 @@ async function fetchPrFiles(owner, repo, prNumber) {
     pages += 1;
   }
 
-  memoryCache.set(cacheKey, { at: Date.now(), nets });
-  return { ok: true, nets, truncated: pages >= PR_FILES_MAX_PAGES && url !== null };
+  memoryCache.set(cacheKey, { at: Date.now(), nets, paths });
+  return {
+    ok: true,
+    nets,
+    paths,
+    truncated: pages >= PR_FILES_MAX_PAGES && url !== null,
+  };
 }
 
 window.__treelinesApi = { fetchPrFiles };
