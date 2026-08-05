@@ -40,16 +40,28 @@ Note: Firefox temporary add-ons are unloaded when the browser restarts. Re-load 
 
 - Content script runs on `https://github.com/*/*/pull/*`.
 - On load (and on SPA navigations) it parses `{owner, repo, pr}` from the URL and calls `GET /repos/:owner/:repo/pulls/:n/files`.
-- Computes net delta per file, then rolls up to every folder by common-prefix aggregation of the file paths in each tree node.
+- Computes net delta per file, then rolls up to every folder by common-prefix aggregation of the API's file list — not of the rows currently on screen, so a collapsed (or lazily rendered) folder still shows the total of everything inside it.
+- Matches a tree row to a path by its row `id` (Primer's TreeView puts the full path there), falling back to walking the row's label chain outwards and keeping the longest chain that names a known file or folder — so a nested `tests/` isn't confused with a root-level one.
+- Puts every badge, file and folder alike, inside the row's content element (the line holding the icon and the name) — Primer's `TreeViewItemContent` on the redesigned tab, `ActionList-content` on the classic one — so they share one right edge. The row container one level up is a CSS grid with fixed areas, where an extra child would be auto-placed into an implicit row above the name.
 - A `MutationObserver` re-applies badges when you collapse/expand folders or GitHub lazy-loads more rows.
 
-## Troubleshooting: missing folder badges
+## The two Files changed pages
 
-GitHub is mid-rollout of a redesigned *Files changed* page (announced [June 2025](https://github.blog/changelog/2025-06-26-improved-pull-request-files-changed-experience-now-in-public-preview/)) — some users/repos see the new tree, others still see the old one. The two trees use slightly different HTML for folder rows.
+GitHub is mid-rollout of a redesigned *Files changed* page (announced [June 2025](https://github.blog/changelog/2025-06-26-improved-pull-request-files-changed-experience-now-in-public-preview/)) — some users/repos see the new tree, others still see the old one, and the same account can get either depending on the repo. Both are supported; nothing is hardcoded to one of them.
 
-File rows are detected via their `#diff-<hash>` link, which is stable across both UIs, so **file badges should always work**. Folder rows are detected by tag/role (`li`, `[role="treeitem"]`, `[role="group"]` — see `src/annotate.js`). If GitHub ships a new tree that uses something else (e.g. `<details>`, a custom element, a `<div>` with a specific class), you'll see file badges but no folder aggregates.
+| Part | classic (`/files`) | redesigned (`/changes`) |
+| --- | --- | --- |
+| Row | `li[role=treeitem]` with `data-tree-entry-type` | `li[role=treeitem]`, path in the row `id` |
+| Label row | `.ActionList-content` (direct child) | `.PRIVATE_TreeView-item-content`, inside a grid container |
+| Subtree | `ul[role=group]` sibling | `ul[role=group]` sibling |
 
-To fix: open DevTools on a PR's Files changed tab, inspect a folder row in the tree, note its tag and any stable attribute, and add it to the selector list in `annotateFolderRows` in `src/annotate.js`.
+What both are matched on: file rows by their `#diff-<hash>` link, paths by row `id` or label chain, folder rows by "any other row that names a folder holding changed files". No per-variant attribute is required, and folder totals never depend on a folder being expanded.
+
+### If badges go missing
+
+A row that can't be resolved is left unbadged rather than badged with a guess, so blanks mean the row's label chain didn't resolve — the tree renders rows flat (no DOM nesting), or the label carries extra text beyond the name. Inspect the row in DevTools and adjust `ROW_SELECTOR` / `rowOwnLabel` in `src/annotate.js`.
+
+If badges appear but sit *above* the name instead of beside it, GitHub renamed the content classes: `CONTENT_SELECTOR` no longer matches, and the fallback landed on the row's grid container. It is placed out of flow at the right edge in that case, but adding the new class name to `CONTENT_SELECTOR` restores proper in-flow placement.
 
 ## Files
 
